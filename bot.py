@@ -1310,20 +1310,7 @@ async def handle_business_message(message: Message):
         )
         owner = conn.user
 
-        if not await has_access(owner.id):
-            logger.warning("ACCESS DENIED | user_id=%s | username=%s", owner.id, owner.username)
-            try:
-                await bot(
-                    SendMessage(
-                        chat_id=message.chat.id,
-                        text=await access_denied_text(owner.id),
-                        business_connection_id=connection_id,
-                    )
-                )
-            except Exception as access_error:
-                logger.warning("ACCESS DENIED MESSAGE ERROR: %s", access_error)
-            return
-
+        
         await register_internal_user(owner.id, owner.username, owner.first_name)
         logger.info(
             "BUYER RESOLVED | id=%s | username=%s | name=%s",
@@ -1550,9 +1537,6 @@ async def accept_offer(callback: CallbackQuery):
 
 @dp.message(F.text.in_({"/menu", "/panel"}))
 async def user_panel_command(message: Message):
-    if not await has_access(message.from_user.id):
-        await message.answer(await access_denied_text(message.from_user.id))
-        return
     await register_internal_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
     await ensure_user_settings(message.from_user.id)
     await render_user_panel(message)
@@ -1560,9 +1544,6 @@ async def user_panel_command(message: Message):
 
 @dp.callback_query(F.data == "user_panel")
 async def user_panel_callback(callback: CallbackQuery):
-    if not await has_access(callback.from_user.id):
-        await callback.answer("Доступ закрыт", show_alert=True)
-        return
     await render_user_panel(callback.message, edit=True)
     await callback.answer()
 
@@ -1703,9 +1684,6 @@ async def user_toggle_notifications(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "user_create_offer")
 async def user_create_offer(callback: CallbackQuery):
-    if not await has_access(callback.from_user.id):
-        await callback.answer("Доступ закрыт", show_alert=True)
-        return
     row = await get_user_offers(callback.from_user.id, 1)
     if not row or not row[0]["connection_id"]:
         await callback.message.edit_text("Сначала отправьте хотя бы один .buy через подключённый бизнес-аккаунт, чтобы бот запомнил подключение.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Назад", style="primary", callback_data="user_panel")]]))
